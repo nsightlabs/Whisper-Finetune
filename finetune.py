@@ -177,7 +177,7 @@ def main():
                              data_collator=data_collator,
                              processing_class=processor.feature_extractor,
                              callbacks=[SavePeftModelCallback],
-                             compute_metrics=(compute_metric_wer if args.metric_for_best_model == 'wer' else None),
+                             # compute_metrics=(compute_metric_wer if args.metric_for_best_model == 'wer' else None),
                              )
     model.config.use_cache = False
     trainer._load_from_checkpoint = load_from_checkpoint
