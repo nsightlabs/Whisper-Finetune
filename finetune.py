@@ -156,18 +156,6 @@ def main():
         print('=' * 90)
         model.print_trainable_parameters()
         print('=' * 90)
-        
-        
-    def compute_metric_wer(pred):
-        pred_ids = pred.predictions
-        label_ids = pred.label_ids
-
-        label_ids[label_ids == -100] = processor.tokenizer.pad_token_id
-        pred_str = processor.tokenizer.batch_decode(pred_ids, skip_special_tokens=True)
-        label_str = processor.tokenizer.batch_decode(label_ids, skip_special_tokens=True)
-
-        wer = wer_metric.compute(predictions=pred_str, references=label_str)
-        return {"wer": wer}
 
     # 定义训练器
     trainer = Seq2SeqTrainer(args=training_args,
@@ -177,7 +165,6 @@ def main():
                              data_collator=data_collator,
                              processing_class=processor.feature_extractor,
                              callbacks=[SavePeftModelCallback],
-                             compute_metrics=(compute_metric_wer if args.metric_for_best_model == 'wer' else None),
                              )
     model.config.use_cache = False
     trainer._load_from_checkpoint = load_from_checkpoint
@@ -191,6 +178,7 @@ def main():
     model.config.use_cache = True
     if training_args.local_rank == 0 or training_args.local_rank == -1:
         model.save_pretrained(os.path.join(output_dir, "checkpoint-final"))
+        trainer.save_model(os.path.join(output_dir, "checkpoint-best"))
     # 是否把模型参数文件推送到huggingface
     if training_args.push_to_hub:
         hub_model_id = args.hub_model_id if args.hub_model_id is not None else output_dir
