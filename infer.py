@@ -2,7 +2,9 @@ import argparse
 import functools
 import platform
 
+import os
 import torch
+import pickle
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline, AutoModelForCausalLM
 
 from utils.utils import print_arguments, add_arguments
@@ -21,6 +23,8 @@ add_arg("assistant_model_path",  type=str,  default=None,  help="助手模型，
 add_arg("local_files_only",      type=bool, default=True,  help="是否只在本地加载模型，不尝试下载")
 add_arg("use_flash_attention_2", type=bool, default=False, help="是否使用FlashAttention2加速")
 add_arg("use_bettertransformer", type=bool, default=False, help="是否使用BetterTransformer加速")
+add_arg("output_dir", type=str, default="output", help="输出结果的保存路径")
+add_arg("save_result", type=bool, default=False, help="是否保存预测结果")
 args = parser.parse_args()
 print_arguments(args)
 
@@ -74,3 +78,15 @@ result = infer_pipe(args.audio_path, return_timestamps=True, generate_kwargs=gen
 
 for chunk in result["chunks"]:
     print(f"[{chunk['timestamp'][0]}-{chunk['timestamp'][1]}s] {chunk['text']}")
+
+if args.save_result:
+    os.makedirs(args.output_dir, exist_ok=True)
+    text = ' '.join([chunk['text'] for chunk in result["chunks"]])
+
+    file_path = os.path.join(
+        args.output_dir,
+        f"{os.path.splitext(os.path.basename(args.audio_path))[0]}.txt"
+    )
+
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(text)
