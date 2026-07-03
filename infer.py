@@ -77,7 +77,7 @@ if args.language is not None:
 
 os.makedirs(args.output_dir, exist_ok=True)
 with open(args.audio_txt_file, "r", encoding="utf-8") as f:
-    audio_paths = f.readlines()
+    audio_paths = [line.strip() for line in f.readlines()]
     for audio_path in tqdm(audio_paths):    
         result = infer_pipe(audio_path, return_timestamps=True, generate_kwargs=generate_kwargs)
 
