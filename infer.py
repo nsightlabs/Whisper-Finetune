@@ -4,6 +4,8 @@ import platform
 
 import os
 import torch
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
 from tqdm import tqdm
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline, AutoModelForCausalLM
 
