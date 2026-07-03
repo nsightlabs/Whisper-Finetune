@@ -4,14 +4,14 @@ import platform
 
 import os
 import torch
-import pickle
+from tqdm import tqdm
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline, AutoModelForCausalLM
 
 from utils.utils import print_arguments, add_arguments
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg("audio_path",  type=str,  default="dataset/test.wav", help="预测的音频路径")
+add_arg("audio_txt_file",  type=str,  default="test.txt", help="预测的音频路径")
 add_arg("model_path",  type=str,  default="models/whisper-tiny-finetune/", help="合并模型的路径，或者是huggingface上模型的名称")
 add_arg("use_gpu",     type=bool, default=True,      help="是否使用gpu进行预测")
 add_arg("language",    type=str,  default="chinese", help="设置语言，如果为None则预测的是多语言")
@@ -74,19 +74,21 @@ generate_kwargs = {"task": args.task, "num_beams": args.num_beams}
 if args.language is not None:
     generate_kwargs["language"] = args.language
 # 推理
-result = infer_pipe(args.audio_path, return_timestamps=True, generate_kwargs=generate_kwargs)
 
-for chunk in result["chunks"]:
-    print(f"[{chunk['timestamp'][0]}-{chunk['timestamp'][1]}s] {chunk['text']}")
+os.makedirs(args.output_dir, exist_ok=True)
+with open(args.audio_txt_file, "r", encoding="utf-8") as f:
+    audio_paths = f.readlines()
+    for audio_path in tqdm(audio_paths):    
+        result = infer_pipe(audio_path, return_timestamps=True, generate_kwargs=generate_kwargs)
 
-if args.save_result:
-    os.makedirs(args.output_dir, exist_ok=True)
-    text = ' '.join([chunk['text'] for chunk in result["chunks"]])
+        # for chunk in result["chunks"]:
+        #     print(f"[{chunk['timestamp'][0]}-{chunk['timestamp'][1]}s] {chunk['text']}")
 
-    file_path = os.path.join(
-        args.output_dir,
-        f"{os.path.splitext(os.path.basename(args.audio_path))[0]}.txt"
-    )
-
-    with open(file_path, "w", encoding="utf-8") as f:
-        f.write(text)
+        if args.save_result:            
+            text = ' '.join([chunk['text'] for chunk in result["chunks"]])
+            file_path = os.path.join(
+                args.output_dir,
+                f"{os.path.splitext(os.path.basename(audio_path))[0]}.txt"
+            )
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(text)
