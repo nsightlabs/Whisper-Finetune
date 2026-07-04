@@ -150,8 +150,8 @@ def main():
                                  remove_unused_columns=False,  # 删除模型不需要的数据列
                                  label_names=["labels"],  # 与标签对应的输入字典中的键列表
                                  push_to_hub=args.push_to_hub, # 是否将模型权重推到HuggingFace Hub
-                                 metric_for_best_model=args.metric_for_best_model,
-                                 greater_is_better=False,
+                                 # metric_for_best_model=args.metric_for_best_model,
+                                 # greater_is_better=False,
                                  run_name=args.run_name,
                                  )
 
