@@ -63,6 +63,7 @@ def ddp_setup():
 
 
 def main():
+    ddp_setup()
     # 获取Whisper的数据处理器，这个包含了特征提取器、tokenizer
     processor = WhisperProcessor.from_pretrained(args.base_model,
                                                  language=args.language,
