@@ -2,6 +2,10 @@ import argparse
 import functools
 import os
 import platform
+import torch
+
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
 
 from peft import LoraConfig, get_peft_model, AdaLoraConfig, PeftModel, prepare_model_for_kbit_training
 from transformers import Seq2SeqTrainer, Seq2SeqTrainingArguments, WhisperForConditionalGeneration, WhisperProcessor
@@ -55,9 +59,16 @@ print_arguments(args)
 # 如果是Windows，num_workers设置为0
 if platform.system() == "Windows":
     args.num_workers = 0
+    
+def setup(rank, world_size):
+    dist.init_process_group("nccl", rank=rank, world_size=world_size)
+    
+def cleanup():
+    dist.destroy_process_group()
 
 
-def main():
+def main(rank, world_size):
+    setup(rank, world_size)
     # 获取Whisper的数据处理器，这个包含了特征提取器、tokenizer
     processor = WhisperProcessor.from_pretrained(args.base_model,
                                                  language=args.language,
@@ -84,11 +95,13 @@ def main():
     data_collator = DataCollatorSpeechSeq2SeqWithPadding(processor=processor)
 
     # 获取Whisper模型
-    device_map = "auto"
-    world_size = int(os.environ.get("WORLD_SIZE", 1))
-    ddp = world_size != 1
-    if ddp:
-        device_map = {"": int(os.environ.get("LOCAL_RANK") or 0)}
+    # device_map = "auto"
+    # world_size = int(os.environ.get("WORLD_SIZE", 1))
+    # ddp = world_size != 1
+    # if ddp:
+    #     device_map = {"": int(os.environ.get("LOCAL_RANK") or 0)}
+    
+    device_map = {"": rank}
 
     # 获取模型
     model = WhisperForConditionalGeneration.from_pretrained(args.base_model,
@@ -186,11 +199,10 @@ def main():
         hub_model_id = args.hub_model_id if args.hub_model_id is not None else output_dir
         model.push_to_hub(hub_model_id)
         
-    import torch.distributed as dist
-    print(dist.is_available(), dist.is_initialized())
-    if dist.is_available() and dist.is_initialized():
-        dist.destroy_process_group()
+    cleanup()
 
 
 if __name__ == '__main__':
-    main()
+    world_size = torch.cuda.device_count()
+    torch.multiprocessing.spawn(main, args=(world_size,), nprocs=world_size, join=True)
+    # main()
