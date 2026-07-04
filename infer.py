@@ -82,10 +82,6 @@ with open(args.audio_txt_file, "r", encoding="utf-8") as f:
     audio_paths = [line.strip() for line in f.readlines()]
     for audio_path in tqdm(audio_paths):    
         result = infer_pipe(audio_path, return_timestamps=True, generate_kwargs=generate_kwargs)
-
-        # for chunk in result["chunks"]:
-        #     print(f"[{chunk['timestamp'][0]}-{chunk['timestamp'][1]}s] {chunk['text']}")
-
         if args.save_result:            
             text = ' '.join([chunk['text'] for chunk in result["chunks"]])
             file_path = os.path.join(
@@ -94,3 +90,8 @@ with open(args.audio_txt_file, "r", encoding="utf-8") as f:
             )
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(text)
+        else:
+            for chunk in result["chunks"]:
+                print(f"[{chunk['timestamp'][0]}-{chunk['timestamp'][1]}s] {chunk['text']}")
+            
+            
