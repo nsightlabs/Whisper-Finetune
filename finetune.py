@@ -173,19 +173,24 @@ def main():
     trainer._load_from_checkpoint = load_from_checkpoint
 
     # 开始训练
+    print("1"*5)
     trainer.train(resume_from_checkpoint=args.resume_from_checkpoint)
 
     # 保存最后的模型
+    print("2"*5)
     trainer.save_state()
     # 重新启用缓存以更快地推断
+    print("3"*5)
     model.config.use_cache = True
     if training_args.local_rank == 0 or training_args.local_rank == -1:
         model.save_pretrained(os.path.join(output_dir, "checkpoint-final"))
     # 是否把模型参数文件推送到huggingface
+    print("4"*5)
     if training_args.push_to_hub:
         hub_model_id = args.hub_model_id if args.hub_model_id is not None else output_dir
         model.push_to_hub(hub_model_id)
-
+    
+    print("5"*5)
 
 if __name__ == '__main__':
     main()
