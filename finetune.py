@@ -185,6 +185,11 @@ def main():
     if training_args.push_to_hub:
         hub_model_id = args.hub_model_id if args.hub_model_id is not None else output_dir
         model.push_to_hub(hub_model_id)
+        
+    import torch.distributed as dist
+    print(dist.is_available(), dist.is_initialized())
+    if dist.is_available() and dist.is_initialized():
+        dist.destroy_process_group()
 
 
 if __name__ == '__main__':
