@@ -20,6 +20,7 @@ add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg("train_data",    type=str, default="dataset/train.json",       help="训练数据集的路径")
 add_arg("test_data",     type=str, default="dataset/test.json",        help="测试数据集的路径")
 add_arg("base_model",    type=str, default="openai/whisper-tiny",      help="Whisper的基础模型")
+add_arg("finetune_model", type=str, default=None, help="微调的模型路径，如果为None则从base_model开始训练")
 add_arg("output_dir",    type=str, default="output/",                  help="训练保存模型的路径")
 add_arg("warmup_steps",  type=int, default=50,      help="训练预热步数")
 add_arg("logging_steps", type=int, default=100,     help="打印日志步数")
@@ -98,7 +99,7 @@ def main():
     
 
     # 获取模型
-    model = WhisperForConditionalGeneration.from_pretrained(args.base_model,
+    model = WhisperForConditionalGeneration.from_pretrained((args.base_model if args.finetune_model is None else args.finetune_model),
                                                             load_in_8bit=args.use_8bit,
                                                             device_map=device_map,
                                                             local_files_only=args.local_files_only)
