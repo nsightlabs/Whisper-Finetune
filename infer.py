@@ -77,7 +77,8 @@ if args.language is not None:
     generate_kwargs["language"] = args.language
 # 推理
 
-os.makedirs(args.output_dir, exist_ok=True)
+if args.save_result:
+    os.makedirs(args.output_dir, exist_ok=True)
 with open(args.audio_txt_file, "r", encoding="utf-8") as f:
     audio_paths = [line.strip() for line in f.readlines()]
     for audio_path in tqdm(audio_paths):    
