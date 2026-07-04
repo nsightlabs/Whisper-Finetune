@@ -2,9 +2,6 @@ import argparse
 import functools
 import os
 import platform
-import torch
-
-from torch.distributed import init_process_group, destroy_process_group
 
 from peft import LoraConfig, get_peft_model, AdaLoraConfig, PeftModel, prepare_model_for_kbit_training
 from transformers import Seq2SeqTrainer, Seq2SeqTrainingArguments, WhisperForConditionalGeneration, WhisperProcessor
@@ -58,14 +55,9 @@ print_arguments(args)
 # 如果是Windows，num_workers设置为0
 if platform.system() == "Windows":
     args.num_workers = 0
-    
-def ddp_setup():
-    torch.cuda.set_device(int(os.environ["LOCAL_RANK"]))
-    init_process_group(backend="nccl")
 
 
 def main():
-    ddp_setup()
     # 获取Whisper的数据处理器，这个包含了特征提取器、tokenizer
     processor = WhisperProcessor.from_pretrained(args.base_model,
                                                  language=args.language,
@@ -189,13 +181,10 @@ def main():
     model.config.use_cache = True
     if training_args.local_rank == 0 or training_args.local_rank == -1:
         model.save_pretrained(os.path.join(output_dir, "checkpoint-final"))
-        trainer.save_model(os.path.join(output_dir, "checkpoint-best"))
     # 是否把模型参数文件推送到huggingface
     if training_args.push_to_hub:
         hub_model_id = args.hub_model_id if args.hub_model_id is not None else output_dir
         model.push_to_hub(hub_model_id)
-        
-    destroy_process_group()
 
 
 if __name__ == '__main__':
