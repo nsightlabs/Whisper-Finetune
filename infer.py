@@ -81,6 +81,8 @@ if args.save_result:
     os.makedirs(args.output_dir, exist_ok=True)
 with open(args.audio_txt_file, "r", encoding="utf-8") as f:
     audio_paths = [line.strip() for line in f.readlines()]
+    
+if args.sequential:
     for audio_path in tqdm(audio_paths):    
         result = infer_pipe(audio_path, return_timestamps=True, generate_kwargs=generate_kwargs)
         if args.save_result:            
@@ -94,5 +96,24 @@ with open(args.audio_txt_file, "r", encoding="utf-8") as f:
         else:
             for chunk in result["chunks"]:
                 print(f"[{chunk['timestamp'][0]}-{chunk['timestamp'][1]}s] {chunk['text']}")
-            
+else:    
+    results = infer_pipe(
+        audio_paths,
+        return_timestamps=True,
+        generate_kwargs=generate_kwargs,
+        batch_size=args.batch_size,
+    )
+    for audio_path, result in tqdm(zip(audio_paths, results), total=len(audio_paths)):
+        if args.save_result:
+            text = ' '.join([chunk['text'] for chunk in result["chunks"]])
+            file_path = os.path.join(
+                args.output_dir,
+                f"{os.path.splitext(os.path.basename(audio_path))[0]}.txt"
+            )
+            with open(file_path, "w", encoding="utf-8") as f:
+                f.write(text)
+        else:
+            for chunk in result["chunks"]:
+                print(f"[{chunk['timestamp'][0]}-{chunk['timestamp'][1]}s] {chunk['text']}")
+    
             
