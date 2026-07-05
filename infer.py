@@ -27,6 +27,7 @@ add_arg("use_flash_attention_2", type=bool, default=False, help="是否使用Fla
 add_arg("use_bettertransformer", type=bool, default=False, help="是否使用BetterTransformer加速")
 add_arg("output_dir", type=str, default="output", help="输出结果的保存路径")
 add_arg("save_result", type=bool, default=False, help="是否保存预测结果")
+add_arg("sequential", type=bool, default=True, help="是否顺序处理音频文件，适用于大文件或内存有限的情况")
 args = parser.parse_args()
 print_arguments(args)
 
