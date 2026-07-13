@@ -12,6 +12,7 @@ from torch.distributed import init_process_group, destroy_process_group
 from transformers import (
     WhisperProcessor,
     WhisperModel,
+    WhisperConfig,
     Trainer,
     TrainingArguments,
     PreTrainedModel,
@@ -240,7 +241,11 @@ def main():
     processor = WhisperProcessor.from_pretrained(args.base_model)
     train_dataset = LanguageDataset(args.train_data, processor)
     test_dataset = LanguageDataset(args.test_data, processor)
-    model = WhisperLanguageDetector(args.base_model, num_languages=len(LANG2ID))
+    
+    config = WhisperConfig.from_pretrained(args.base_model)
+    config.num_languages = len(LANG2ID)
+    config.whisper_model = args.base_model
+    model = WhisperLanguageDetector(config)
 
     training_args = TrainingArguments(
         output_dir=args.output_dir,
