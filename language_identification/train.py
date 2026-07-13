@@ -1,6 +1,7 @@
 import argparse
 import os
 import json
+from matplotlib.image import resample
 import torch
 import librosa
 import soundfile as sf
@@ -59,31 +60,68 @@ class LanguageDataset(Dataset):
         self.data_list = []
         self._load_data_list()
         
+    # def _load_data_list(self):
+    #     with open(self.data_file, "r", encoding="utf-8") as f:
+    #         data = [json.loads(line) for line in f]
+            
+    #     for item in tqdm(data, desc=f"Loading data from {os.path.basename(self.data_file)}"):
+    #         if os.path.exists(item['audio']):
+    #             sample, sampling_rate = sf.read(item['audio'], dtype='float32')
+    #             if self.sampling_rate != sampling_rate:
+    #                 sample = self.resample(sample, orig_sr=sampling_rate, target_sr=self.sampling_rate)
+    #             features = self.processor(
+    #                 sample,
+    #                 sampling_rate=self.sampling_rate,
+    #                 return_tensors="pt"
+    #             ).input_features[0]
+    #             label = LANG2ID.get(item["language"].lower())
+    #             self.data_list.append({
+    #                 "input_features":features,
+    #                 "labels":torch.tensor(label, dtype=torch.long)
+    #             })
+    
+    
     def _load_data_list(self):
+        from concurrent.futures import ProcessPoolExecutor
         with open(self.data_file, "r", encoding="utf-8") as f:
             data = [json.loads(line) for line in f]
-            
-        for item in tqdm(data, desc=f"Loading data from {os.path.basename(self.data_file)}"):
-            if os.path.exists(item['audio']):
-                sample, sampling_rate = sf.read(item['audio'], dtype='float32')
-                if self.sampling_rate != sampling_rate:
-                    sample = self.resample(sample, orig_sr=sampling_rate, target_sr=self.sampling_rate)
-                features = self.processor(
-                    sample,
-                    sampling_rate=self.sampling_rate,
-                    return_tensors="pt"
-                ).input_features[0]
-                label = LANG2ID.get(item["language"].lower())
-                self.data_list.append({
-                    "input_features":features,
-                    "labels":torch.tensor(label, dtype=torch.long)
-                })
+        
+        tasks = [
+            (item, self.processor, self.sampling_rate)
+            for item in data
+        ]
+
+        with ProcessPoolExecutor(max_workers=4) as executor:
+            results = list(tqdm(executor.map(self.process_item, tasks), total=len(tasks), desc="Processing audio"))
+            self.data_list = [x for x in results if x is not None]
                 
     def __getitem__(self, idx):
         return self.data_list[idx]        
         
     def __len__(self):
         return len(self.data_list)
+    
+    @staticmethod
+    def process_item(args):
+        item, processor, sampling_rate = args
+        if not os.path.exists(item["audio"]):
+            return None
+
+        sample, sr = sf.read(item["audio"], dtype="float32")
+        if sr != sampling_rate:
+            sample = resample(sample, orig_sr=sr, target_sr=sampling_rate)
+
+        features = processor(
+            sample,
+            sampling_rate=sampling_rate,
+            return_tensors="pt"
+        ).input_features[0]
+        label = LANG2ID[item["language"].lower()]
+
+        return {
+            "input_features": features,
+            "labels": torch.tensor(label, dtype=torch.long)
+        }
     
     @staticmethod
     def resample(sample, orig_sr, target_sr):
