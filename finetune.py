@@ -103,7 +103,10 @@ def main():
                                                             device_map=device_map,
                                                             local_files_only=args.local_files_only)
     model.config.forced_decoder_ids = None
-    model.config.suppress_tokens = []
+    model.config.suppress_tokens = []   
+    model.generation_config.forced_decoder_ids = None
+    model.generation_config.language = args.language
+    model.generation_config.task = args.task
     # 量化模型
     model = prepare_model_for_kbit_training(model)
     # 注册forward，否则多卡训练会失败
