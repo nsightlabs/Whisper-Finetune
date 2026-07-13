@@ -18,12 +18,6 @@ from utils.utils import print_arguments, make_inputs_require_grad, add_arguments
 from evaluate import load
 wer_metric = load("wer")
 
-import transformers
-transformers.logging.set_verbosity_error()
-import logging
-logging.getLogger("transformers").setLevel(logging.ERROR)
-transformers.utils.logging.enable_progress_bar()
-
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg("train_data",    type=str, default="dataset/train.json",       help="训练数据集的路径")
