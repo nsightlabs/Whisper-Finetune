@@ -14,7 +14,7 @@ from transformers import (
     WhisperModel,
     Trainer,
     TrainingArguments,
-    PretrainedModel,
+    PreTrainedModel,
 )
 
 parser = argparse.ArgumentParser()
@@ -137,7 +137,7 @@ class LanguageDataset(Dataset):
 # =========================
 # Whisper LID Model
 # =========================
-class WhisperLanguageDetector(PretrainedModel):
+class WhisperLanguageDetector(PreTrainedModel):
     def __init__(
         self,
         model_name,
