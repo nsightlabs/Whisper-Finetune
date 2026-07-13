@@ -242,9 +242,16 @@ def main():
     train_dataset = LanguageDataset(args.train_data, processor)
     test_dataset = LanguageDataset(args.test_data, processor)
     
-    config = WhisperConfig.from_pretrained(args.base_model)
-    config.num_languages = len(LANG2ID)
-    config.whisper_model = args.base_model
+    base_config = WhisperConfig.from_pretrained(args.base_model)
+    config_dict = base_config.to_dict()
+    config_dict.pop("model_type", None)
+
+    config = WhisperLanguageConfig(
+        whisper_model=args.base_model,
+        num_languages=len(LANG2ID),
+        **config_dict
+    )
+    config.architectures = ["WhisperLanguageDetector"]
     model = WhisperLanguageDetector(config)
 
     training_args = TrainingArguments(
