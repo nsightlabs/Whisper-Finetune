@@ -263,7 +263,13 @@ def main():
     trainer.train()
     
     if not args.ddp or (training_args.local_rank == 0 or training_args.local_rank == -1):
-        model.save_pretrained(os.path.join(args.output_dir, "checkpoint-final"))
+        save_path = os.path.join(args.output_dir, "checkpoint-final")
+        os.makedirs(save_path, exist_ok=True)
+
+        torch.save(
+            model.state_dict(),
+            os.path.join(save_path, "pytorch_model.bin")
+        )
     
     if args.ddp:   
         destroy_process_group()
