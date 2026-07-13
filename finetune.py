@@ -165,6 +165,29 @@ def main():
         print('=' * 90)
         model.print_trainable_parameters()
         print('=' * 90)
+        
+    from functools import partial
+    import jiwer
+    import numpy as np
+
+    def compute_metrics(eval_pred, processor):
+        pred_ids, label_ids = eval_pred
+        
+        if isinstance(pred_ids, tuple):
+            pred_ids = pred_ids[0]
+
+        label_ids = np.where(label_ids != -100, label_ids, processor.tokenizer.pad_token_id)
+
+        pred_str = processor.batch_decode(pred_ids, skip_special_tokens=True)
+        label_str = processor.batch_decode(label_ids, skip_special_tokens=True)
+
+        pairs = [(p, l) for p, l in zip(pred_str, label_str) if l.strip() != ""]
+        if not pairs:
+            return {"wer": 0.0}
+        preds, refs = zip(*pairs)
+
+        wer = jiwer.wer(list(refs), list(preds))
+        return {"wer": wer}
 
     # 定义训练器
     trainer = Seq2SeqTrainer(args=training_args,
@@ -174,6 +197,7 @@ def main():
                              data_collator=data_collator,
                              processing_class=processor.feature_extractor,
                              callbacks=[SavePeftModelCallback],
+                             compute_metrics=partial(compute_metrics, processor=processor)
                              )
     model.config.use_cache = False
     trainer._load_from_checkpoint = load_from_checkpoint
