@@ -135,7 +135,7 @@ def main():
         Seq2SeqTrainingArguments(output_dir=output_dir,  # 保存检查点和意志的目录
                                  per_device_train_batch_size=args.per_device_train_batch_size,  # 训练batch_size大小
                                  per_device_eval_batch_size=args.per_device_eval_batch_size,  # 评估batch_size大小
-                                 gradient_accumulation_steps=args.gradient_accumulation_steps,  # 训练梯度累计步数
+                                 gradient_accumulation_steps=10,  # 训练梯度累计步数
                                  learning_rate=args.learning_rate,  # 学习率大小
                                  warmup_steps=args.warmup_steps,  # 预热步数
                                  num_train_epochs=args.num_train_epochs,  # 微调训练轮数
@@ -159,6 +159,8 @@ def main():
                                  metric_for_best_model=args.metric_for_best_model,
                                  greater_is_better=False,
                                  run_name=args.run_name,
+                                 generation_max_length=255,
+                                 predict_with_generate=True,
                                  )
 
     if training_args.local_rank == 0 or training_args.local_rank == -1:
