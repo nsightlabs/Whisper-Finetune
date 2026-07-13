@@ -22,9 +22,9 @@ class CustomDataset(Dataset):
                  timestamps=False,
                  sample_rate=16000,
                  min_duration=0.5,
-                 max_duration=30,
+                 max_duration=60,
                  min_sentence=1,
-                 max_sentence=200,
+                 max_sentence=500,
                  augment_config_path=None):
         """
         Args:
@@ -42,9 +42,9 @@ class CustomDataset(Dataset):
         """
         super(CustomDataset, self).__init__()
         assert min_duration >= 0.5, f"min_duration不能小于0.5，当前为：{min_duration}"
-        assert max_duration <= 30, f"max_duration不能大于30，当前为：{max_duration}"
+        # assert max_duration <= 30, f"max_duration不能大于30，当前为：{max_duration}"
         assert min_sentence >= 1, f"min_sentence不能小于1，当前为：{min_sentence}"
-        assert max_sentence <= 200, f"max_sentence不能大于200，当前为：{max_sentence}"
+        # assert max_sentence <= 200, f"max_sentence不能大于200，当前为：{max_sentence}"
         self.data_list_path = data_list_path
         self.processor = processor
         self.data_list_path = data_list_path
