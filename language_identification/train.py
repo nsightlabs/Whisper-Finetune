@@ -1,7 +1,6 @@
 import argparse
 import os
 import json
-from matplotlib.image import resample
 import torch
 import librosa
 import soundfile as sf
@@ -109,7 +108,7 @@ class LanguageDataset(Dataset):
 
         sample, sr = sf.read(item["audio"], dtype="float32")
         if sr != sampling_rate:
-            sample = resample(sample, orig_sr=sr, target_sr=sampling_rate)
+            sample = librosa.resample(sample, orig_sr=sr, target_sr=sampling_rate)
 
         features = processor(
             sample,
