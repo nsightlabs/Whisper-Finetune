@@ -52,8 +52,10 @@ class LanguageDataset(Dataset):
         self,
         data_file,
         processor,
+        max_duration=30,
         sampling_rate=16000
     ):
+        self.max_duration = max_duration
         self.data_file = data_file
         self.processor = processor
         self.sampling_rate = sampling_rate
@@ -62,7 +64,7 @@ class LanguageDataset(Dataset):
         
     def _load_data_list(self):
         with open(self.data_file, "r", encoding="utf-8") as f:
-            data = [json.loads(line) for line in f]
+            data = [json.loads(line) for line in f if (json.loads(line)['duration'] <= self.max_duration)]
             
         for item in tqdm(data, desc=f"Loading data from {os.path.basename(self.data_file)}"):
             if os.path.exists(item['audio']):
