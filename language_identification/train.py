@@ -15,6 +15,7 @@ from transformers import (
     Trainer,
     TrainingArguments,
     PreTrainedModel,
+    PretrainedConfig
 )
 
 parser = argparse.ArgumentParser()
@@ -137,21 +138,33 @@ class LanguageDataset(Dataset):
 # =========================
 # Whisper LID Model
 # =========================
-class WhisperLanguageDetector(PreTrainedModel):
+class WhisperLanguageConfig(PretrainedConfig):
+    model_type = "whisper-language-detector"
     def __init__(
         self,
-        model_name,
-        num_languages
+        whisper_model,
+        num_languages,
+        **kwargs
     ):
-        config = WhisperModel.from_pretrained(model_name).config
+        super().__init__(**kwargs)
+        self.whisper_model = whisper_model
+        self.num_languages = num_languages
+
+class WhisperLanguageDetector(PreTrainedModel):
+    config_class = WhisperLanguageConfig
+    def __init__(
+        self,
+        config
+    ):
         super().__init__(config)
-        self.encoder = WhisperModel.from_pretrained(model_name).encoder
-        hidden = (self.encoder.config.d_model)
+        whisper = WhisperModel.from_pretrained(config.whisper_model)
+        self.encoder = whisper.encoder
+        hidden = config.d_model
         self.classifier = nn.Sequential(
             nn.Linear(hidden, 512),
             nn.ReLU(),
             nn.Dropout(0.2),
-            nn.Linear(512, num_languages)
+            nn.Linear(512, config.num_languages)
         )
 
     def forward(
