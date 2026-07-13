@@ -171,15 +171,17 @@ def main():
     import numpy as np
 
     def compute_metrics(eval_pred, processor):
+        print("1")
         pred_ids, label_ids = eval_pred
         
         if isinstance(pred_ids, tuple):
             pred_ids = pred_ids[0]
-
+        print("2")
         label_ids = np.where(label_ids != -100, label_ids, processor.tokenizer.pad_token_id)
-
+        print("3")
         pred_str = processor.batch_decode(pred_ids, skip_special_tokens=True)
         label_str = processor.batch_decode(label_ids, skip_special_tokens=True)
+        print("4")
 
         pairs = [(p, l) for p, l in zip(pred_str, label_str) if l.strip() != ""]
         if not pairs:
