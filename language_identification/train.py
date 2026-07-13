@@ -6,6 +6,7 @@ import librosa
 import soundfile as sf
 import torch.nn as nn
 from tqdm import tqdm
+from collections import Counter
 from torch.utils.data import Dataset
 from torch.distributed import init_process_group, destroy_process_group
 from transformers import (
@@ -63,7 +64,8 @@ class LanguageDataset(Dataset):
     def _load_data_list(self):
         with open(self.data_file, "r", encoding="utf-8") as f:
             data = [json.loads(line) for line in f]
-            
+        
+        loaded_languages = []  
         for item in tqdm(data, desc=f"Loading data from {os.path.basename(self.data_file)}"):
             if os.path.exists(item['audio']):
                 sample, sampling_rate = sf.read(item['audio'], dtype='float32')
@@ -75,10 +77,12 @@ class LanguageDataset(Dataset):
                     return_tensors="pt"
                 ).input_features[0]
                 label = LANG2ID.get(item["language"].lower())
+                loaded_languages.append(item["language"].lower())
                 self.data_list.append({
                     "input_features":features,
                     "labels":torch.tensor(label, dtype=torch.long)
                 })
+        print("Language Counts:", Counter(loaded_languages))
     
     
     # def _load_data_list(self):
