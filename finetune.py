@@ -22,6 +22,7 @@ import transformers
 transformers.logging.set_verbosity_error()
 import logging
 logging.getLogger("transformers").setLevel(logging.ERROR)
+transformers.utils.logging.enable_progress_bar()
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
