@@ -24,7 +24,7 @@ class CustomDataset(Dataset):
                  min_duration=0.5,
                  max_duration=60,
                  min_sentence=1,
-                 max_sentence=500,
+                 max_sentence=1000,
                  augment_config_path=None):
         """
         Args:
