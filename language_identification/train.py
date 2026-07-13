@@ -22,6 +22,7 @@ parser.add_argument("--test_data", type=str, default="dataset/test.jsonl")
 parser.add_argument("--base_model", type=str, default="openai/whisper-large-v3")
 parser.add_argument("--output_dir", type=str, default="whisper-language-detector")
 parser.add_argument("--max_steps", type=int, default=1000)
+parser.add_argument("--eval_steps", type=int, default=100)
 parser.add_argument("--warmup_steps", type=int, default=100)
 parser.add_argument("--batch_size", type=int, default=8)
 parser.add_argument("--lr", type=float, default=1e-5)
@@ -232,9 +233,9 @@ def main():
         learning_rate=args.lr,
         eval_strategy="steps",
         save_strategy="steps",
-        eval_steps=100,
-        save_steps=100,
-        logging_steps=100,
+        eval_steps=args.eval_steps,
+        save_steps=args.eval_steps,
+        logging_steps=args.eval_steps,
         optim="adamw_torch",
         fp16=args.fp16,
         save_total_limit=1,
