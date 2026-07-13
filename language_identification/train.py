@@ -13,7 +13,8 @@ from transformers import (
     WhisperProcessor,
     WhisperModel,
     Trainer,
-    TrainingArguments
+    TrainingArguments,
+    PretrainedModel,
 )
 
 parser = argparse.ArgumentParser()
@@ -136,13 +137,14 @@ class LanguageDataset(Dataset):
 # =========================
 # Whisper LID Model
 # =========================
-class WhisperLanguageDetector(nn.Module):
+class WhisperLanguageDetector(PretrainedModel):
     def __init__(
         self,
         model_name,
         num_languages
     ):
-        super().__init__()
+        config = WhisperModel.from_pretrained(model_name).config
+        super().__init__(config)
         self.encoder = WhisperModel.from_pretrained(model_name).encoder
         hidden = (self.encoder.config.d_model)
         self.classifier = nn.Sequential(
@@ -263,13 +265,7 @@ def main():
     trainer.train()
     
     if not args.ddp or (training_args.local_rank == 0 or training_args.local_rank == -1):
-        save_path = os.path.join(args.output_dir, "checkpoint-final")
-        os.makedirs(save_path, exist_ok=True)
-
-        torch.save(
-            model.state_dict(),
-            os.path.join(save_path, "pytorch_model.bin")
-        )
+        model.save_pretrained(os.path.join(args.output_dir, "checkpoint-final"))
     
     if args.ddp:   
         destroy_process_group()
