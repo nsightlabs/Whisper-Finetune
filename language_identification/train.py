@@ -241,7 +241,7 @@ def main():
         load_best_model_at_end=True,
         metric_for_best_model="accuracy",
         greater_is_better=True,
-        report_to=("wandb" if os.environ.get("KAGGLE_KERNEL_RUN_TYPE") == "Batch" else "no"),
+        report_to=("wandb" if os.environ.get("KAGGLE_KERNEL_RUN_TYPE") == "Batch" else "none"),
         run_name=(args.run_name if args.run_name is not None else None)
     )
 
