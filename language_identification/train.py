@@ -30,6 +30,7 @@ parser.add_argument("--run_name", type=str, default=None, help="WandB run name, 
 parser.add_argument("--train_batch_size", type=int, default=8)
 parser.add_argument("--eval_batch_size", type=int, default=8)
 parser.add_argument("--num_workers", type=int, default=4)
+parser.add_argument("--ddp", action="store_true", help="Use Distributed Data Parallel (DDP) for training")
 
 
 args = parser.parse_args()
@@ -177,7 +178,8 @@ def ddp_setup():
     init_process_group(backend="nccl")
 
 def main():
-    ddp_setup()
+    if args.ddp:
+        ddp_setup()
     processor = WhisperProcessor.from_pretrained(args.base_model)
     train_dataset = LanguageDataset(args.train_data, processor)
     test_dataset = LanguageDataset(args.test_data, processor)
@@ -218,10 +220,11 @@ def main():
 
     trainer.train()
     
-    if training_args.local_rank == 0 or training_args.local_rank == -1:
+    if not args.ddp or (training_args.local_rank == 0 or training_args.local_rank == -1):
         model.save_pretrained(os.path.join(args.output_dir, "checkpoint-final"))
-        
-    destroy_process_group()
+    
+    if args.ddp:   
+        destroy_process_group()
 
 
 if __name__ == "__main__":
