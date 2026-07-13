@@ -143,13 +143,12 @@ class WhisperLanguageConfig(PretrainedConfig):
     model_type = "whisper-language-detector"
     def __init__(
         self,
-        whisper_model,
-        num_languages,
         **kwargs
     ):
+        print(kwargs)
         super().__init__(**kwargs)
-        self.whisper_model = whisper_model
-        self.num_languages = num_languages
+        self.whisper_model = args.base_model
+        self.num_languages = len(LANG2ID)
 
 class WhisperLanguageDetector(PreTrainedModel):
     config_class = WhisperLanguageConfig
@@ -247,8 +246,6 @@ def main():
     config_dict.pop("model_type", None)
 
     config = WhisperLanguageConfig(
-        whisper_model=args.base_model,
-        num_languages=len(LANG2ID),
         **config_dict
     )
     config.architectures = ["WhisperLanguageDetector"]
