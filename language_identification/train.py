@@ -35,7 +35,7 @@ parser.add_argument("--num_workers", type=int, default=4)
 args = parser.parse_args()
 
 with open(args.train_data, "r", encoding="utf-8") as f:
-    train_data = json.load(f)
+    train_data = [json.loads(line) for line in f]
     languages = list(set([item["language"].lower() for item in train_data]))
     
 LANG2ID = {lang: idx for idx, lang in enumerate(languages)}
