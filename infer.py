@@ -29,6 +29,7 @@ add_arg("use_bettertransformer", type=bool, default=False, help="是否使用Bet
 add_arg("output_dir", type=str, default="output", help="输出结果的保存路径")
 add_arg("save_result", type=bool, default=False, help="是否保存预测结果")
 add_arg("sequential", type=bool, default=True, help="是否顺序处理音频文件，适用于大文件或内存有限的情况")
+add_arg("multiprocess", type=bool, default=False, help="是否使用多进程进行推理，适用于多GPU环境")
 
 
 def main(rank, world_size, args):
@@ -127,7 +128,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     print_arguments(args)
     
-    if torch.cuda.is_available() and args.use_gpu:
+    if args.multiprocess and torch.cuda.is_available() and args.use_gpu:
         world_size = torch.cuda.device_count()
         mp.spawn(main, args=(world_size, args,), nprocs=world_size)
     else:
