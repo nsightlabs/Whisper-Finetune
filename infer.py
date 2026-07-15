@@ -6,6 +6,7 @@ import os
 import torch
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
+import torch.multiprocessing as mp
 from tqdm import tqdm
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline, AutoModelForCausalLM
 
@@ -28,93 +29,107 @@ add_arg("use_bettertransformer", type=bool, default=False, help="是否使用Bet
 add_arg("output_dir", type=str, default="output", help="输出结果的保存路径")
 add_arg("save_result", type=bool, default=False, help="是否保存预测结果")
 add_arg("sequential", type=bool, default=True, help="是否顺序处理音频文件，适用于大文件或内存有限的情况")
-args = parser.parse_args()
-print_arguments(args)
 
-# 设置设备
-device = "cuda:0" if torch.cuda.is_available() and args.use_gpu else "cpu"
-torch_dtype = torch.float16 if torch.cuda.is_available() and args.use_gpu else torch.float32
 
-# 获取Whisper的特征提取器、编码器和解码器
-processor = AutoProcessor.from_pretrained(args.model_path)
+def main(rank, world_size, args):
+    if torch.cuda.is_available() and args.use_gpu:
+        torch.cuda.set_device(rank)
 
-# 获取模型
-model = AutoModelForSpeechSeq2Seq.from_pretrained(
-    args.model_path, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True,
-    use_flash_attention_2=args.use_flash_attention_2
-)
-model.generation_config.forced_decoder_ids = None
-if args.use_bettertransformer and not args.use_flash_attention_2:
-    model = model.to_bettertransformer()
-# 使用Pytorch2.0的编译器
-if args.use_compile:
-    if torch.__version__ >= "2" and platform.system().lower() != 'windows':
-        model = torch.compile(model)
-model.to(device)
+    # 设置设备
+    device = f"cuda:{rank}" if torch.cuda.is_available() and args.use_gpu else "cpu"
+    torch_dtype = torch.float16 if torch.cuda.is_available() and args.use_gpu else torch.float32
 
-# 获取助手模型
-generate_kwargs_pipeline = {"max_new_tokens": 128}
-if args.assistant_model_path is not None:
-    assistant_model = AutoModelForCausalLM.from_pretrained(
-        args.assistant_model_path, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True
+    # 获取Whisper的特征提取器、编码器和解码器
+    processor = AutoProcessor.from_pretrained(args.model_path)
+
+    # 获取模型
+    model = AutoModelForSpeechSeq2Seq.from_pretrained(
+        args.model_path, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True,
+        use_flash_attention_2=args.use_flash_attention_2
     )
-    assistant_model.to(device)
-    generate_kwargs_pipeline = {"assistant_model": assistant_model}
+    model.generation_config.forced_decoder_ids = None
+    if args.use_bettertransformer and not args.use_flash_attention_2:
+        model = model.to_bettertransformer()
+    # 使用Pytorch2.0的编译器
+    if args.use_compile:
+        if torch.__version__ >= "2" and platform.system().lower() != 'windows':
+            model = torch.compile(model)
+    model.to(device)
 
-# 获取管道
-infer_pipe = pipeline("automatic-speech-recognition",
-                      model=model,
-                      tokenizer=processor.tokenizer,
-                      feature_extractor=processor.feature_extractor,
-                      chunk_length_s=30,
-                      batch_size=args.batch_size,
-                      torch_dtype=torch_dtype,
-                      generate_kwargs=generate_kwargs_pipeline,
-                      device=device)
+    # 获取助手模型
+    generate_kwargs_pipeline = {"max_new_tokens": 128}
+    if args.assistant_model_path is not None:
+        assistant_model = AutoModelForCausalLM.from_pretrained(
+            args.assistant_model_path, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True
+        )
+        assistant_model.to(device)
+        generate_kwargs_pipeline = {"assistant_model": assistant_model}
 
-# 推理参数
-generate_kwargs = {"task": args.task, "num_beams": args.num_beams}
-if args.language is not None:
-    generate_kwargs["language"] = args.language
-# 推理
+    # 获取管道
+    infer_pipe = pipeline("automatic-speech-recognition",
+                        model=model,
+                        tokenizer=processor.tokenizer,
+                        feature_extractor=processor.feature_extractor,
+                        chunk_length_s=30,
+                        batch_size=args.batch_size,
+                        torch_dtype=torch_dtype,
+                        generate_kwargs=generate_kwargs_pipeline,
+                        device=device)
 
-if args.save_result:
-    os.makedirs(args.output_dir, exist_ok=True)
-with open(args.audio_txt_file, "r", encoding="utf-8") as f:
-    audio_paths = [line.strip() for line in f.readlines()]
-    
-if args.sequential:
-    for audio_path in tqdm(audio_paths):    
-        result = infer_pipe(audio_path, return_timestamps=True, generate_kwargs=generate_kwargs)
-        if args.save_result:            
-            text = ' '.join([chunk['text'] for chunk in result["chunks"]])
-            file_path = os.path.join(
-                args.output_dir,
-                f"{os.path.splitext(os.path.basename(audio_path))[0]}.txt"
-            )
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(text)
-        else:
-            for chunk in result["chunks"]:
-                print(f"[{chunk['timestamp'][0]}-{chunk['timestamp'][1]}s] {chunk['text']}")
-else:    
-    results = infer_pipe(
-        audio_paths,
-        return_timestamps=True,
-        generate_kwargs=generate_kwargs,
-        batch_size=args.batch_size,
-    )
-    for audio_path, result in tqdm(zip(audio_paths, results), total=len(audio_paths)):
-        if args.save_result:
-            text = ' '.join([chunk['text'] for chunk in result["chunks"]])
-            file_path = os.path.join(
-                args.output_dir,
-                f"{os.path.splitext(os.path.basename(audio_path))[0]}.txt"
-            )
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(text)
-        else:
-            for chunk in result["chunks"]:
-                print(f"[{chunk['timestamp'][0]}-{chunk['timestamp'][1]}s] {chunk['text']}")
+    # 推理参数
+    generate_kwargs = {"task": args.task, "num_beams": args.num_beams}
+    if args.language is not None:
+        generate_kwargs["language"] = args.language
+    # 推理
+
+    if args.save_result:
+        os.makedirs(args.output_dir, exist_ok=True)
+    with open(args.audio_txt_file, "r", encoding="utf-8") as f:
+        audio_paths = [line.strip() for line in f.readlines()]
+        audio_paths = audio_paths[rank::world_size]
+        
+    if args.sequential:
+        for audio_path in tqdm(audio_paths):    
+            result = infer_pipe(audio_path, return_timestamps=True, generate_kwargs=generate_kwargs)
+            if args.save_result:            
+                text = ' '.join([chunk['text'] for chunk in result["chunks"]])
+                file_path = os.path.join(
+                    args.output_dir,
+                    f"{os.path.splitext(os.path.basename(audio_path))[0]}.txt"
+                )
+                with open(file_path, "w", encoding="utf-8") as f:
+                    f.write(text)
+            else:
+                for chunk in result["chunks"]:
+                    print(f"[{chunk['timestamp'][0]}-{chunk['timestamp'][1]}s] {chunk['text']}")
+    else:    
+        results = infer_pipe(
+            audio_paths,
+            return_timestamps=True,
+            generate_kwargs=generate_kwargs,
+            batch_size=args.batch_size,
+        )
+        for audio_path, result in tqdm(zip(audio_paths, results), total=len(audio_paths)):
+            if args.save_result:
+                text = ' '.join([chunk['text'] for chunk in result["chunks"]])
+                file_path = os.path.join(
+                    args.output_dir,
+                    f"{os.path.splitext(os.path.basename(audio_path))[0]}.txt"
+                )
+                with open(file_path, "w", encoding="utf-8") as f:
+                    f.write(text)
+            else:
+                for chunk in result["chunks"]:
+                    print(f"[{chunk['timestamp'][0]}-{chunk['timestamp'][1]}s] {chunk['text']}")
     
             
+if __name__ == "__main__":
+    args = parser.parse_args()
+    print_arguments(args)
+    
+    if torch.cuda.is_available() and args.use_gpu:
+        world_size = torch.cuda.device_count()
+        mp.spawn(main, args=(world_size, args,), nprocs=world_size)
+    else:
+        main(rank=0, world_size=1, args=args)
+    
